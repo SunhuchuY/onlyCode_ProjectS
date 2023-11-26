@@ -2,12 +2,10 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
-public class Boss1JumpAttack : MonoBehaviour
+public class Boss1HoldAttack : MonoBehaviour
 {
     private List<Transform> targets = new List<Transform>();
     private const int damageAmount = 20;
-    private const float knockbackForce = 20f;
 
     private void Start()
     {
@@ -17,30 +15,17 @@ public class Boss1JumpAttack : MonoBehaviour
     private void OnEnable()
     {
         GetComponent<Collider>().enabled = false;
-        targets.Clear();
     }
 
     private void OnDisable()
     {
-        foreach (var t in targets)
+        foreach (Transform t in targets)
         {
             var playerInformation = t.GetComponent<PlayerInformation>();
-            var playerRigidbody = t.GetComponent<Rigidbody>();
-
             if (playerInformation != null)
             {
                 playerInformation.Damage(damageAmount);
-                ApplyKnockback(t.transform, playerRigidbody);
             }
-        }
-    }
-
-    private void ApplyKnockback(Transform targetTransform, Rigidbody targetRigidbody)
-    {
-        if (targetTransform != null && targetRigidbody != null)
-        {
-            Vector3 knockbackDirection = (targetTransform.position - transform.position).normalized;
-            targetRigidbody.AddForce(knockbackDirection * knockbackForce, ForceMode.Impulse);
         }
     }
 

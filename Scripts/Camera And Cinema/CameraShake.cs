@@ -7,6 +7,8 @@ using UnityEngine;
 public class CameraShake : MonoBehaviour
 {
     public static CameraShake instance;
+    [SerializeField] private Transform cameraPivot;
+    [SerializeField] private Transform mainCamera;
 
     private void Awake()
     {
@@ -18,15 +20,9 @@ public class CameraShake : MonoBehaviour
 
     public void CameraShakeFuntion(float power, float duration)
     {
-        transform.DOShakePosition
+        cameraPivot.DOShakePosition
                     (duration, strength: Vector3.one * power,
                     vibrato: 10, randomness: 90, fadeOut: true);
     }
 
-}
-
-public enum CameraShakeType
-{
-    Shake,
-    Zoom
 }

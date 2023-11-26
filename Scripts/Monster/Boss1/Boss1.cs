@@ -1,110 +1,42 @@
+using Cinemachine.Utility;
 using DG.Tweening;
 using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using TMPro;
-using Unity.Mathematics;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
-public class Boss1 : MonoBehaviour, IMonsterAI
+public class Boss1 : VMonsterAI
 {
-    [SerializeField] private MonsterDetection monsterDetection;
 
     [SerializeField] private Transform jumpAttackTransform;
     [SerializeField] private Transform attack1Transform;
+    [SerializeField] private Transform holdAttackTransform, holdAttackFillTransform, holdAttackEndPosition;
 
-    private Animator animator;
-    private Collider targetCollider;
-    private Rigidbody rigidbody;
-
-    private bool isDetect = false;
-    private bool isAttacking = false;
-
-    [Header("Speed")]
-    [SerializeField] private float moveSpeed = 5;
-    [SerializeField] private float rotationSpeed = 5;
     [SerializeField] private float jumpPower= 5;
 
-    private void Awake()
+    protected override void Awake()
     {
-        animator = GetComponent<Animator>();
-        rigidbody = GetComponent<Rigidbody>();
+        base.Awake();
     }
 
-    private void Update()
+
+    protected override void Update()
     {
-        if (isAttacking)
-            return;
-
-        Detect();
-
-        if (isDetect)
-        {
-            if (monsterDetection.GetIsPossibleAttack(targetCollider))
-                Attack();
-            else
-                Move();
-        }
-        else
-            Idle();
-
+        base.Update();
     }
-
-    public void Attack()
-    {
-        animator.SetBool("isAttack", true);
-        animator.SetBool("isMove", false);
-    }
-
-    public void Detect()
-    {
-        var temp = monsterDetection.DetectPlayer();
-
-        if (temp != null)
-        {
-            isDetect = true;
-            targetCollider = temp;
-        }
-        else
-            isDetect = false;
-    }
-
-    public void Idle()
-    {
-        animator.SetBool("isAttack", false);
-        animator.SetBool("isMove", false);
-    }
-
-    public void Move()
-    {
-        animator.SetBool("isMove", true);
-
-        Vector3 direction = targetCollider.transform.position - transform.position;
-
-        Vector3 moveDirection = (direction.normalized) * moveSpeed;
-        moveDirection.y = 0;
-        rigidbody.velocity = moveDirection;
-
-        Vector3 rotationDirection = direction.normalized;
-        Quaternion targetRotation = Quaternion.LookRotation(rotationDirection);
-        Quaternion playerRotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-        playerRotation.x = 0;
-        playerRotation.z = 0;
-        transform.rotation = playerRotation;
-    }
-
 
     public void JumpAttackStartEvent()
     {
-        Vector3 rotationDirection = (targetCollider.transform.position - transform.position).normalized;
-        Quaternion targetRotation = Quaternion.LookRotation(rotationDirection);
+        var rotationDirection = (targetCollider.transform.position - transform.position).normalized;
+        var targetRotation = Quaternion.LookRotation(rotationDirection);
         targetRotation.x = 0;
         targetRotation.z = 0;
         transform.rotation = targetRotation;
 
-        jumpAttackTransform.position = PlayerInformation.instance.transform.position;
+
+        var targetPosition = PlayerInformation.instance.transform.position;
+        targetPosition.y += 0.5f;
+        jumpAttackTransform.position = targetPosition;
         jumpAttackTransform.gameObject.SetActive(true);
     }
 
@@ -122,7 +54,7 @@ public class Boss1 : MonoBehaviour, IMonsterAI
 
         // DOJump를 사용하여 포물선 이동
         transform.DOJump(jumpAttackTransform.position, jumpPower, 1, delay)
-            .SetEase(Ease.Linear)
+            .SetEase(Ease.InQuad)
             .OnComplete(() =>
             {
                 //jumpAttackTransform.GetComponent<BoxCollider>().enabled = true;
@@ -132,7 +64,7 @@ public class Boss1 : MonoBehaviour, IMonsterAI
 
         //yield return new WaitForSeconds(delay + 0.5f);
         //jumpAttackTransform.gameObject.SetActive(false);
-        yield return new WaitForSeconds(5);
+        yield return new WaitForSeconds(7);
         animator.SetBool("isJumpAttack", false);
     }
 
@@ -160,4 +92,254 @@ public class Boss1 : MonoBehaviour, IMonsterAI
         yield return new WaitForSeconds(0.2f);
         attack1Transform.gameObject.SetActive(false);
     }
-}
+
+    public void HoldAttackTryStartEvent()
+    {
+        holdAttackTransform.gameObject.SetActive(true);
+        holdAttackFillTransform.gameObject.SetActive(true);
+
+        var targetPosition = transform.position;
+        targetPosition.y += 1;
+        holdAttackTransform.position = targetPosition;
+
+        var rotationDirection = (targetCollider.transform.position - transform.position).normalized;
+        var targetRotation = Quaternion.LookRotation(rotationDirection);
+        targetRotation = Quaternion.Euler(90, targetRotation.eulerAngles.y, targetRotation.eulerAngles.z);
+        holdAttackTransform.rotation = targetRotation;
+
+        holdAttackFillTransform.localScale = new Vector2(1,0);
+
+        holdAttackFillTransform.DOScaleY(1, 4)
+        .SetEase(Ease.Linear)
+        .OnStart(() =>
+        {
+            var rotationDirection = (holdAttackEndPosition.position - transform.position).normalized;
+            var targetRotation = Quaternion.LookRotation(rotationDirection);
+            targetRotation.x = 0;
+            targetRotation.z = 0;
+            transform.rotation = targetRotation;
+        })
+        .OnUpdate(() =>
+        {
+        })
+        .OnComplete(() => 
+        {
+            animator.CrossFade("holdAttackTry2", 0.1f);
+            holdAttackTransform.gameObject.SetActive(false);
+        });
+
+    }
+
+    public void HoldAttackTryEvent()
+    {
+        Tween moveTween = null;
+        var targetPosition = holdAttackEndPosition.position;
+        targetPosition.y = transform.position.y;
+
+        moveTween = transform.DOMove(targetPosition, 1f)
+            .SetEase(Ease.Linear)
+            .OnUpdate(() =>
+            {
+                if (monsterDetection.GetIsForwardPlayer(transform.position + transform.forward, targetCollider))
+                {
+                    animator.CrossFade("holdAttacking", 0.1f);
+                    moveTween.Kill();
+                    return;
+                }
+            })
+            .OnComplete(() =>
+            {
+                animator.CrossFade("Idle", 0.1f);
+            });
+    }
+
+
+    Quaternion originalTargetRotation;
+    Vector3 originalTargetPosition;
+
+    public void HoldAttackStartEvent()
+    {
+        PlayerManager.instance.isSturn = true;
+
+        #region Position
+        originalTargetPosition = targetCollider.transform.position;
+
+        var targetPosition = transform.position + (transform.forward );
+        targetPosition.y = targetCollider.transform.position.y + 1.2f;
+        targetCollider.transform.position = targetPosition;
+        #endregion
+
+        #region Rotation
+        originalTargetRotation = targetCollider.transform.rotation;
+
+        Vector3 newEulerAngles = new Vector3(-70, originalTargetRotation.eulerAngles.y, originalTargetRotation.eulerAngles.z);
+        Quaternion newRotation = Quaternion.Euler(newEulerAngles);
+
+        targetCollider.transform.rotation = newRotation;
+        #endregion 
+
+        targetCollider.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezeAll;
+    }
+
+    public void HoldAttackEvent()
+    {
+        targetCollider.GetComponent<PlayerInformation>().Damage(20);
+
+    }
+
+    public void HoldAttackEndEvent()
+    {
+        PlayerManager.instance.isSturn = false;
+        targetCollider.transform.position = originalTargetPosition;
+        targetCollider.transform.rotation = originalTargetRotation;
+        animator.CrossFade("Idle", 0.1f);
+
+        targetCollider.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.None;
+        targetCollider.GetComponent<Rigidbody>().constraints = RigidbodyConstraints.FreezeRotation;
+    }
+} 
+
+/* public class Boss1 : VMonsterAI
+{
+    [SerializeField] private Transform jumpAttackTransform, attack1Transform;
+    [SerializeField] private Transform holdAttackTransform, holdAttackFillTransform, holdAttackEndPosition;
+    [SerializeField] private float jumpPower = 5;
+
+    private const float holdAttackTryDuration = 4f;
+    private const float holdAttackFillDuration = 4f;
+    private const float holdAttackTryFadeDuration = 0.1f;
+    private const float holdAttackMoveDuration = 1f;
+
+    private Quaternion originalTargetRotation;
+    private Vector3 originalTargetPosition;
+
+    protected override void Awake()
+    {
+        base.Awake();
+    }
+
+    protected override void Update()
+    {
+        base.Update();
+    }
+
+    private void RotateTowardsTarget(Transform targetTransform)
+    {
+        var rotationDirection = (targetTransform.position - transform.position).normalized;
+        var targetRotation = Quaternion.LookRotation(rotationDirection);
+        targetRotation.x = 0;
+        targetRotation.z = 0;
+        transform.rotation = targetRotation;
+    }
+
+    private IEnumerator JumpAttackCoroutine()
+    {
+        float delay = 1;
+
+        Vector3 midPoint = (transform.position + jumpAttackTransform.position) / 2f;
+        midPoint.y += jumpPower;
+
+        transform.DOJump(jumpAttackTransform.position, jumpPower, 1, delay)
+            .SetEase(Ease.InQuad)
+            .OnComplete(() =>
+            {
+                animator.SetBool("isJumpAttack", true);
+            });
+
+        yield return new WaitForSeconds(7);
+        animator.SetBool("isJumpAttack", false);
+        jumpAttackTransform.gameObject.SetActive(false);
+    }
+
+    private void ApplyKnockback(Transform targetTransform, Rigidbody targetRigidbody)
+    {
+        if (targetTransform != null && targetRigidbody != null)
+        {
+            Vector3 knockbackDirection = (targetTransform.position - transform.position).normalized;
+            targetRigidbody.AddForce(knockbackDirection * 20, ForceMode.Impulse);
+        }
+    }
+
+    private void ActivateAttack(Transform attackTransform, float delay)
+    {
+        attackTransform.gameObject.SetActive(true);
+        StartCoroutine(DeactivateAfterDelay(attackTransform.gameObject, delay));
+    }
+
+    private IEnumerator DeactivateAfterDelay(GameObject gameObject, float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        gameObject.SetActive(false);
+    }
+
+    private void ScaleFillBar(Transform fillTransform, float duration)
+    {
+        fillTransform.localScale = new Vector2(1, 0);
+
+        fillTransform.DOScaleY(1, duration)
+            .SetEase(Ease.Linear);
+    }
+
+    private void MoveToPosition(Transform targetTransform, float duration, TweenCallback onComplete = null)
+    {
+        transform.DOMove(targetTransform.position, duration)
+            .SetEase(Ease.Linear)
+            .OnUpdate(() =>
+            {
+                if (monsterDetection.GetIsForwardPlayer(transform.position + transform.forward, targetCollider))
+                {
+                    onComplete?.Invoke();
+                }
+            })
+            .OnComplete(onComplete);
+    }
+
+    public void JumpAttackStartEvent()
+    {
+        RotateTowardsTarget(targetCollider.transform);
+
+        var targetPosition = PlayerInformation.instance.transform.position;
+        targetPosition.y += 0.5f;
+        jumpAttackTransform.position = targetPosition;
+        jumpAttackTransform.gameObject.SetActive(true);
+    }
+
+    public void JumpAttackEvent()
+    {
+        StartCoroutine(JumpAttackCoroutine());
+    }
+
+    public void JumpAttackDamageEvent()
+    {
+        jumpAttackTransform.GetComponent<BoxCollider>().enabled = true;
+        StartCoroutine(DeactivateAfterDelay(jumpAttackTransform.gameObject, 0.1f));
+    }
+
+    public void Attack1Event()
+    {
+        ActivateAttack(attack1Transform, 0.2f);
+    }
+
+    public void HoldAttackTryStartEvent()
+    {
+        holdAttackTransform.gameObject.SetActive(true);
+        holdAttackFillTransform.gameObject.SetActive(true);
+
+        var targetPosition = transform.position;
+        targetPosition.y += 1;
+        holdAttackTransform.position = targetPosition;
+
+        RotateTowardsTarget(targetCollider.transform);
+
+        holdAttackFillTransform.localScale = new Vector2(1, 0);
+
+        ScaleFillBar(holdAttackFillTransform, holdAttackFillDuration);
+
+        MoveToPosition(holdAttackEndPosition, holdAttackTryDuration, () =>
+        {
+            animator.CrossFade("holdAttackTry2", holdAttackTryFadeDuration);
+            holdAttackTransform.gameObject.SetActive(false);
+        });
+    }
+} */
+

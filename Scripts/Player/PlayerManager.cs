@@ -13,6 +13,7 @@ public class PlayerManager : MonoBehaviour
     public Animator animator;
 
     public bool isInteracting;
+    public bool isSturn;
 
     private void Awake()
     {
@@ -29,16 +30,27 @@ public class PlayerManager : MonoBehaviour
 
     private void Update()
     {
+        animator.SetBool("isSturn", isSturn);
+
+        if (isSturn)
+            return;
+
         inputManager.HandleAllInputs();
     }
 
     private void FixedUpdate()
     {
+        if (isSturn)
+            return;
+
         playerLocomotion.HandleAllMovement();
     }
 
     private void LateUpdate()
     {
+        if (isSturn)
+            return;
+
         cameraManager.HandleAllCamera();
 
         isInteracting = animator.GetBool("isInteracting");

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Resources;
 using UnityEngine;
 
+
 public class PlayerBehaviorController : MonoBehaviour
 {
     private Animator animator;
@@ -18,51 +19,52 @@ public class PlayerBehaviorController : MonoBehaviour
     [SerializeField] private float basicAttackCoolTime = 3;
     private float basicAttackCurTime = 0;
 
+    private const float minBasicAttackTime = 0.1f;
+    private const int maxBasicAttackState = 3;
+
     private void Awake()
     {
         animator = GetComponent<Animator>();
         animator.SetInteger("BasicAttackState", 1);
     }
 
-    private void Update() 
+    private void Update()
     {
-        BasicAttackUpdate(); 
+        StartCoroutine(BasicAttackUpdateCoroutine());
     }
 
-    private void BasicAttackUpdate()
+    private System.Collections.IEnumerator BasicAttackUpdateCoroutine()
     {
-        if(!isBasicAttack)
+        while (!isBasicAttack)
         {
             basicAttackCurTime += Time.deltaTime;
 
-            if(basicAttackCurTime > basicAttackCoolTime)
+            if (basicAttackCurTime > basicAttackCoolTime)
             {
                 animator.SetInteger("BasicAttackState", 1);
                 basicAttackCurTime = 0;
             }
-        }
 
+            yield return null;
+        }
     }
 
     public void BasicAttackCombo()
     {
-        if(!isBasicAttack)
+        if (!isBasicAttack && basicAttackCurTime > minBasicAttackTime)
         {
-            if(basicAttackCurTime > 0.1f)
-                isBasicAttack = true;
-
+            isBasicAttack = true;
             return;
         }
 
-
-        context.Transition(basicAttackCombo_Execute);
-        context.BehaviorStart();
+        context?.Transition(basicAttackCombo_Execute);
+        context?.BehaviorStart();
     }
 
     private void BasicAttackCombo_Cancle()
     {
-        context.Transition(basicAttackCombo_Cancle);
-        context.BehaviorStart();
+        context?.Transition(basicAttackCombo_Cancle);
+        context?.BehaviorStart();
 
         isBasicAttack = false;
     }
@@ -71,9 +73,19 @@ public class PlayerBehaviorController : MonoBehaviour
     {
         animator.SetInteger("BasicAttackState", animator.GetInteger("BasicAttackState") + 1);
 
-        if (animator.GetInteger("BasicAttackState") < 1 || animator.GetInteger("BasicAttackState") > 3)
+        if (animator.GetInteger("BasicAttackState") < 1 || animator.GetInteger("BasicAttackState") > maxBasicAttackState)
             animator.SetInteger("BasicAttackState", 1);
 
         BasicAttackCombo_Cancle();
+    }
+
+    public void AttackStart()
+    {
+        PlayerSword.instance?.AttackStart();
+    }
+
+    public void AttackEnd()
+    {
+        PlayerSword.instance?.AttackEnd();
     }
 }

@@ -13,7 +13,7 @@ public class PlayerHUDController : MonoBehaviour, IPlayerObserver
     public void Notify()
     {
         float extraHp = (float)PlayerInformation.instance.curHp / (float)PlayerInformation.instance.maxHp;
-        Mathf.Clamp(extraHp, 0, 1);
+        extraHp = Mathf.Clamp(extraHp, 0, 1);
         hpFillBar.localScale = new Vector3(extraHp, hpFillBar.localScale .y, hpFillBar.localScale .z);
     }
 }

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using DG.Tweening;
 
+
 public class PlayerLocomotion : MonoBehaviour
 {
     private PlayerManager playerManager;
@@ -32,23 +33,22 @@ public class PlayerLocomotion : MonoBehaviour
     public bool isSprinting;
     public bool isGrounded;
 
+    private const float landingAnimationDuration = 0.1f;
+
     private void Awake()
     {
         inputManager = GetComponent<InputManager>();
         playerRigidbody = GetComponent<Rigidbody>();
-        animatorManager = GetComponent<AnimatorManager>();  
+        animatorManager = GetComponent<AnimatorManager>();
         playerManager = GetComponent<PlayerManager>();
         playerBehaviorController = GetComponent<PlayerBehaviorController>();
-    }   
+    }
 
     public void HandleAllMovement()
     {
         HandleFallingAndLanding();
 
-        if (playerManager.isInteracting)
-            return;
-
-        if (playerBehaviorController.isBasicAttack)
+        if (playerManager.isInteracting || playerBehaviorController.isBasicAttack)
             return;
 
         HandleMovement();
@@ -62,10 +62,8 @@ public class PlayerLocomotion : MonoBehaviour
         moveDirection.Normalize();
         moveDirection.y = 0;
 
-        if (isSprinting)
-            moveDirection *= sprintSpeed;
-        else
-            moveDirection *= walkSpeed;
+        float speed = isSprinting ? sprintSpeed : walkSpeed;
+        moveDirection *= speed;
 
         Vector3 movementVelocity = moveDirection;
         playerRigidbody.velocity = movementVelocity;
@@ -73,26 +71,22 @@ public class PlayerLocomotion : MonoBehaviour
 
     private void HandleRotation()
     {
-        Vector3 targetDirection = Vector3.zero;
-
-        targetDirection = cameraObject.forward * inputManager.verticalInput;
-        targetDirection += cameraObject.right * inputManager.horizontalInput;
-        targetDirection.Normalize();
-        targetDirection.y = 0;
+        Vector3 targetDirection = moveDirection;
 
         if (targetDirection == Vector3.zero)
             targetDirection = transform.forward;
 
         Quaternion targetRotation = Quaternion.LookRotation(targetDirection);
         Quaternion playerRotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-        
-        transform.rotation = playerRotation;    
+
+        transform.rotation = playerRotation;
     }
 
     private void HandleFallingAndLanding()
     {
         RaycastHit hit;
         Vector3 rayCastOrigin = transform.position;
+        Vector3 targetPosition = transform.position;
         rayCastOrigin.y += rayCastHeightOffSet;
 
         if (!isGrounded)
@@ -105,11 +99,13 @@ public class PlayerLocomotion : MonoBehaviour
             playerRigidbody.AddForce(-Vector3.up * fallingVelocity * inAirTime);
         }
 
-        if(Physics.SphereCast(rayCastOrigin, 0.2f, -Vector3.up, out hit, groundLayer))
+        if (Physics.SphereCast(rayCastOrigin, 0.2f, -Vector3.up, out hit, groundLayer))
         {
-            if(!isGrounded && !playerManager.isInteracting)
+            if (!isGrounded && !playerManager.isInteracting)
                 animatorManager.PlayTargetAnimation("Landing", true);
-                
+
+            Vector3 rayCasetHitPoint = hit.point;
+            targetPosition.y = rayCasetHitPoint.y;
             inAirTime = 0;
             isGrounded = true;
         }
@@ -118,26 +114,43 @@ public class PlayerLocomotion : MonoBehaviour
             isGrounded = false;
         }
 
+        if (isGrounded)
+        {
+            if (playerManager.isInteracting || inputManager.moveAmount > 0)
+            {
+                transform.position = Vector3.Lerp(transform.position, targetPosition, Time.deltaTime / landingAnimationDuration);
+            }
+            else
+            {
+                transform.position = targetPosition;
+            }
+        }
     }
 
     public void HandleMoveAndRotationToAttack()
     {
-        var targetColider = PlayerDetection.Instance.DetectMonsterInRadius();
+        PlayerDetection playerDetection = PlayerDetection.Instance;
+
+        if (playerDetection == null)
+            return;
+
+        var targetColider = playerDetection.DetectMonsterInRadius();
 
         if (targetColider == null)
             return;
 
-        Transform targetTransform = targetColider.transform;
-        Vector3 direction = targetTransform.position - transform.position;
+        var targetTransform = targetColider.transform;
+        var direction = targetTransform.position - transform.position;
 
         float backwardForce = 0.5f;
-        Vector3 targetPosition = targetTransform.position;
+        var targetPosition = targetTransform.position;
         targetPosition -= direction * backwardForce;
         targetPosition.y = transform.position.y;
+
         transform.DOMove(targetPosition, 0.1f);
 
-        Quaternion targetRotation = Quaternion.LookRotation(direction);
-        Quaternion playerRotation = targetRotation;
+        var targetRotation = Quaternion.LookRotation(direction);
+        var playerRotation = targetRotation;
         playerRotation.x = 0;
         playerRotation.z = 0;
         transform.rotation = playerRotation;

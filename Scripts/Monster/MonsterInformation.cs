@@ -42,4 +42,8 @@ public class MonsterInformation : MonoBehaviour
         curHp = maxHp;
     }
 
+    public void Damage(int damage)
+    {
+        curHp -= damage;    
+    }
 }
