@@ -1,13 +1,15 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 
 public class Boss1JumpAttack : MonoBehaviour
 {
     private List<Transform> targets = new List<Transform>();
-    private const int damageAmount = 20;
-    private const float knockbackForce = 20f;
+    [SerializeField] private int damageAmount = 20;
+    [SerializeField] private float knockbackForce = 0.001f;
+    [SerializeField] private int sturnDuration = 3000;
 
     private void Start()
     {
@@ -30,18 +32,29 @@ public class Boss1JumpAttack : MonoBehaviour
             if (playerInformation != null)
             {
                 playerInformation.Damage(damageAmount);
+                Debug.Log("Test");
                 ApplyKnockback(t.transform, playerRigidbody);
             }
         }
     }
 
-    private void ApplyKnockback(Transform targetTransform, Rigidbody targetRigidbody)
+    private async void ApplyKnockback(Transform targetTransform, Rigidbody targetRigidbody)
     {
         if (targetTransform != null && targetRigidbody != null)
         {
             Vector3 knockbackDirection = (targetTransform.position - transform.position).normalized;
-            targetRigidbody.AddForce(knockbackDirection * knockbackForce, ForceMode.Impulse);
+            knockbackDirection.y += knockbackForce;
+            targetRigidbody.AddForce(knockbackDirection, ForceMode.Impulse);
+
+            await Sturn();
         }
+    }
+
+    private async Task Sturn()
+    {
+        PlayerManager.instance.isSturn = true;
+        await Task.Delay(sturnDuration); 
+        PlayerManager.instance.isSturn = false;
     }
 
     private void OnTriggerEnter(Collider other)

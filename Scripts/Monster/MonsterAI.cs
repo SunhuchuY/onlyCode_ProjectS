@@ -77,6 +77,11 @@ public abstract class VMonsterAI : MonoBehaviour
         transform.rotation = playerRotation;
     }
 
+    public void Dead()
+    {
+        
+    }
+
     protected void SetAnimatorParameters(bool isAttack, bool isMove)
     {
         animator.SetBool("isAttack", isAttack);

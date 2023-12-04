@@ -5,6 +5,7 @@ using UnityEngine;
 public class MonsterInformation : MonoBehaviour
 {
     [SerializeField] private MonsterObserver monsterObserver;
+    [SerializeField] private VMonsterAI vMonsterAI;
 
     private int _curHp;
     public int curHp
@@ -18,6 +19,12 @@ public class MonsterInformation : MonoBehaviour
             _curHp = value;
 
             monsterObserver.NotifyObservers();
+
+            // Dead
+            if(value <= 0)
+            {
+                vMonsterAI.Dead();
+            }
         }
     }
 
@@ -35,6 +42,13 @@ public class MonsterInformation : MonoBehaviour
 
             monsterObserver.NotifyObservers();
         }
+    }
+
+
+    private void Awake()
+    {
+        monsterObserver = GetComponent<MonsterObserver>();
+        vMonsterAI = GetComponent<VMonsterAI>();   
     }
 
     private void Start()

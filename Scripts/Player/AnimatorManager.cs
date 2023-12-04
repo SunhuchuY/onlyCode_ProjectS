@@ -55,4 +55,10 @@ public class AnimatorManager : MonoBehaviour
         animator.SetFloat(horizontal, horizontalMovement, 0.1f, Time.deltaTime);
         animator.SetFloat(vertical, verticalMovement, 0.1f, Time.deltaTime);
     }
+
+    public void AllSetZero()
+    {
+        animator.SetFloat(horizontal, 0);
+        animator.SetFloat(vertical, 0);
+    }
 }

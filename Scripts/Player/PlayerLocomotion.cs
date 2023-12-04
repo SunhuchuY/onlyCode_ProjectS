@@ -48,7 +48,10 @@ public class PlayerLocomotion : MonoBehaviour
     {
         HandleFallingAndLanding();
 
-        if (playerManager.isInteracting || playerBehaviorController.isBasicAttack)
+        if (playerManager.isInteracting)
+            return;
+
+        if (playerBehaviorController.isBasicAttack)
             return;
 
         HandleMovement();

@@ -32,8 +32,11 @@ public class PlayerManager : MonoBehaviour
     {
         animator.SetBool("isSturn", isSturn);
 
-        if (isSturn)
+        if (PlayerQuest.instance.isConversation)
+        {
+            inputManager.HandleAllSetZero();
             return;
+        }
 
         inputManager.HandleAllInputs();
     }
@@ -43,16 +46,25 @@ public class PlayerManager : MonoBehaviour
         if (isSturn)
             return;
 
+        if (PlayerQuest.instance.isConversation)
+        {
+            inputManager.HandleAllSetZero();
+            return;
+        }
+
         playerLocomotion.HandleAllMovement();
     }
 
     private void LateUpdate()
     {
-        if (isSturn)
+
+        if (PlayerQuest.instance.isConversation)
+        {
+            inputManager.HandleAllSetZero();
             return;
+        }
 
         cameraManager.HandleAllCamera();
-
         isInteracting = animator.GetBool("isInteracting");
     }
 }
